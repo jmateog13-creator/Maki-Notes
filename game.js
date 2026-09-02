@@ -1091,6 +1091,20 @@ function endGame(victory) {
   saveProgress(progress);
   checkAchievements();
 
+  // ── PONT AULATECH ── fets del torn (encerts/errors reals de les notes servides).
+  // Victòria = ÚLTIM torn del servei (nivell 20): l'arc són 20 nivells encadenats.
+  // Derrota: send() normal, no sendOnce — es pot reintentar i encara acabar l'arc.
+  if (window.AulaTechBridge) {
+    let hits = 0, misses = 0;
+    NOTES.forEach(nn => { const s = state.sessionStats[nn.name]; hits += s.hits; misses += s.misses; });
+    const fets = { precisio: (hits + misses) ? hits / (hits + misses) : 0, errors: misses };
+    if (victory && state.cfg.level >= 20) {
+      AulaTechBridge.sendOnce('maki-notes', Object.assign({ completat: true, perfecte: misses === 0 }, fets));
+    } else if (!victory) {
+      AulaTechBridge.send('maki-notes', Object.assign({ completat: false }, fets));
+    }
+  }
+
   ovTitle.textContent = victory ? "SERVEI COMPLET!" : "KO";
   ovText.textContent  = victory
     ? "Has servit tots els plats. El xef està orgullós."
