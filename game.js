@@ -1098,9 +1098,10 @@ function endGame(victory) {
     let hits = 0, misses = 0;
     NOTES.forEach(nn => { const s = state.sessionStats[nn.name]; hits += s.hits; misses += s.misses; });
     const fets = { precisio: (hits + misses) ? hits / (hits + misses) : 0, errors: misses };
-    if (victory && state.cfg.level >= 20) {
-      AulaTechBridge.sendOnce('maki-notes', Object.assign({ completat: true, perfecte: misses === 0 }, fets));
-    } else if (!victory) {
+    // Abans només pagava l'ÚLTIM nivell (20): ara cada nivell superat reporta.
+    if (victory) {
+      AulaTechBridge.sendOnce('maki-notes', Object.assign({ completat: true, perfecte: state.cfg.level >= 20 && misses === 0 }, fets));
+    } else {
       AulaTechBridge.send('maki-notes', Object.assign({ completat: false }, fets));
     }
   }
