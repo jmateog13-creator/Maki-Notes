@@ -57,8 +57,18 @@ const STAGE_ALL = [
   { name: "FA",  y: 20 }
 ];
 
+// 1r ESO (?curs=1): 6 torns. Primer els espais (FA·LA·DO), després DO·MI·SOL; cinta lenta.
+const CURS1 = typeof location !== 'undefined' && new URLSearchParams(location.search).get('curs') === '1';
+const LV_MAX = CURS1 ? 6 : 20;
+
 function makeLevel(n) {
   const cfg = { level: n, lives: 5 };
+  if (CURS1) {
+    const k = (n - 1) % 3;
+    cfg.tier = "easy"; cfg.notes = (n <= 3 ? STAGE1 : STAGE2).slice();
+    cfg.speed = 65 + k * 10; cfg.spawn = 3600 - k * 200; cfg.target = 6 + k * 2;
+    return cfg;
+  }
   if (n <= 5) {
     cfg.tier   = "easy";
     cfg.notes  = STAGE1.slice();
@@ -93,7 +103,7 @@ function makeLevel(n) {
 // ============================================================
 // LOCALSTORAGE · progrés + estadístiques + settings + achievements
 // ============================================================
-const SAVE_KEY = "maki-notes:progress";
+const SAVE_KEY = "maki-notes:progress" + (CURS1 ? ":c1" : "");
 const DEFAULT_SETTINGS = {
   volMusic: 35, volSfx: 80, tones: true, music: true, colorblind: false
 };
@@ -466,12 +476,21 @@ document.querySelectorAll(".magnetic").forEach(btn => {
 // SELECTOR DE TORNS
 // ============================================================
 const levelGrid = document.getElementById("level-grid");
+if (CURS1) {   // 1r: la llegenda diu el que hi ha de debò
+  const lg = document.querySelector(".level-legend");
+  if (lg) lg.querySelectorAll("span").forEach((sp, i) => {
+    if (i === 0) sp.innerHTML = '<i class="dot dot-easy"></i> 1-3 · Espais (FA·LA·DO)';
+    else if (i === 1) sp.innerHTML = '<i class="dot dot-easy"></i> 4-6 · Línies de baix (DO·MI·SOL)';
+    else sp.remove();
+  });
+}
 function renderLevelGrid() {
   levelGrid.innerHTML = "";
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= LV_MAX; i++) {
     const card = document.createElement("div");
     let tier, tag;
-    if (i <= 5)       { tier = "easy"; tag = "FA·LA·DO"; }
+    if (CURS1)        { tier = "easy"; tag = i <= 3 ? "FA·LA·DO" : "DO·MI·SOL"; }
+    else if (i <= 5)  { tier = "easy"; tag = "FA·LA·DO"; }
     else if (i <= 10) { tier = "easy"; tag = "DO·MI·SOL"; }
     else if (i <= 16) { tier = "mid";  tag = "DO·RE·MI·FA"; }
     else              { tier = "hard"; tag = "TOT · TOT"; }
@@ -1083,7 +1102,7 @@ function endGame(victory) {
   if (victory) {
     sndWin();
     const n = state.cfg.level;
-    if (n + 1 > progress.unlocked && n < 20) progress.unlocked = n + 1;
+    if (n + 1 > progress.unlocked && n < LV_MAX) progress.unlocked = n + 1;
     progress.scores[n] = Math.max(progress.scores[n] || 0, state.score);
   } else {
     sndLose();
@@ -1100,7 +1119,7 @@ function endGame(victory) {
     const fets = { precisio: (hits + misses) ? hits / (hits + misses) : 0, errors: misses };
     // completat = joc sencer; els nivells intermedis queden registrats sense pagar
     if (victory) {
-      AulaTechBridge.send('maki-notes', Object.assign({ completat: state.cfg.level >= 20, perfecte: state.cfg.level >= 20 && misses === 0 }, fets));
+      AulaTechBridge.send('maki-notes', Object.assign({ completat: state.cfg.level >= LV_MAX, perfecte: state.cfg.level >= LV_MAX && misses === 0 }, fets));
     } else {
       AulaTechBridge.send('maki-notes', Object.assign({ completat: false }, fets));
     }
@@ -1131,7 +1150,7 @@ function endGame(victory) {
     <div class="ov-stat"><span class="lbl">COMBO MÀX</span><span class="val">${state.combo}</span></div>
   `;
   ovStats.innerHTML += `<div class="note-stats" style="grid-column: 1 / -1; width:100%;">${noteRows}</div>`;
-  ovNext.style.display = (victory && state.cfg.level < 20) ? "" : "none";
+  ovNext.style.display = (victory && state.cfg.level < LV_MAX) ? "" : "none";
 
   setTimeout(() => overlay.classList.remove("hidden"), 350);
 }
